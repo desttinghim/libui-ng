@@ -168,7 +168,7 @@ static void onOpenFileClicked(uiButton *b, void *data)
 	uiEntry *entry = uiEntry(data);
 	char *filename;
 
-	filename = uiOpenFile(mainwin);
+	filename = uiOpenFile(mainwin, NULL, "DS ROM (*.nds)|*.nds;*.srl|Any file|*.*");
 	if (filename == NULL) {
 		uiEntrySetText(entry, "(cancelled)");
 		return;
@@ -182,7 +182,7 @@ static void onOpenFolderClicked(uiButton *b, void *data)
 	uiEntry *entry = uiEntry(data);
 	char *filename;
 
-	filename = uiOpenFolder(mainwin);
+	filename = uiOpenFolder(mainwin, NULL);
 	if (filename == NULL) {
 		uiEntrySetText(entry, "(cancelled)");
 		return;
@@ -196,7 +196,7 @@ static void onSaveFileClicked(uiButton *b, void *data)
 	uiEntry *entry = uiEntry(data);
 	char *filename;
 
-	filename = uiSaveFile(mainwin);
+	filename = uiSaveFile(mainwin, NULL, "untitled", "melonDS savestate (*.mln)|*.mln");
 	if (filename == NULL) {
 		uiEntrySetText(entry, "(cancelled)");
 		return;
@@ -359,7 +359,7 @@ static void openClicked(uiMenuItem *item, uiWindow *w, void *data)
 {
 	char *filename;
 
-	filename = uiOpenFile(mainwin);
+	filename = uiOpenFile(mainwin, NULL, "DS ROM (*.nds)|*.nds;*.srl|Any file|*.*");
 	if (filename == NULL) {
 		uiMsgBoxError(mainwin, "No file selected", "Don't be alarmed!");
 		return;
@@ -372,7 +372,7 @@ static void openFolderClicked(uiMenuItem *item, uiWindow *w, void *data)
 {
 	char *filename;
 
-	filename = uiOpenFolder(mainwin);
+	filename = uiOpenFolder(mainwin, NULL);
 	if (filename == NULL) {
 		uiMsgBoxError(mainwin, "No folder selected", "Don't be alarmed!");
 		return;
@@ -385,7 +385,7 @@ static void saveClicked(uiMenuItem *item, uiWindow *w, void *data)
 {
 	char *filename;
 
-	filename = uiSaveFile(mainwin);
+	filename = uiSaveFile(mainwin, NULL, "untitled", "melonDS savestate (*.mln)|*.mln");
 	if (filename == NULL) {
 		uiMsgBoxError(mainwin, "No file selected", "Don't be alarmed!");
 		return;
