@@ -207,12 +207,13 @@ static void onOpenFileWithParamsClicked(uiButton *b, void *data)
 {
 	uiEntry *entry = uiEntry(data);
 	char *filename;
-	uiFileDialogParams fparams;
+	uiFileDialogParams fparams = {0};
 
 	fparams.filterCount = 2;
 	fparams.filters = (uiFileDialogParamsFilter[]){
-		{"DS ROM (*.nds)", 1, (const char *[]){"*.nds"}},
-		{"Any File", 1, (const char *[]){"*.*"}},
+		{"Text File (*.txt)", 1, (const char *[]){"*.txt"}},
+		{"JPEG File (*.jpg, *.jpeg)", 2, (const char *[]){"*.jpg", "*.jpeg"}},
+		{"Any File", 1, (const char *[]){"*"}},
 	};
 
 	filename = uiOpenFileWithParams(mainwin, &fparams);
@@ -228,8 +229,11 @@ static void onOpenFolderWithParamsClicked(uiButton *b, void *data)
 {
 	uiEntry *entry = uiEntry(data);
 	char *filename;
+	uiFileDialogParams fparams = {0};
 
-	filename = uiOpenFolderWithParams(mainwin, NULL);
+	fparams.defaultPath = "/";
+
+	filename = uiOpenFolderWithParams(mainwin, &fparams);
 	if (filename == NULL) {
 		uiEntrySetText(entry, "(cancelled)");
 		return;
@@ -242,13 +246,12 @@ static void onSaveFileWithParamsClicked(uiButton *b, void *data)
 {
 	uiEntry *entry = uiEntry(data);
 	char *filename;
-	uiFileDialogParams fparams;
+	uiFileDialogParams fparams = {0};
 
-	fparams.defaultPath = NULL;
 	fparams.defaultName = "untitled";
 	fparams.filterCount = 1;
 	fparams.filters = (uiFileDialogParamsFilter[]){
-		{"melonDS savestate (*.mln)", 1, (const char *[]){"*.mln"}},
+		{"Text File (*.txt)", 1, (const char *[]){"*.txt"}},
 	};
 
 	filename = uiSaveFileWithParams(mainwin, &fparams);
@@ -320,7 +323,7 @@ static uiControl *makeDataChoosersPage(void)
 	uiGridSetPadded(grid, 1);
 	uiBoxAppend(vbox, uiControl(grid), 0);
 
-	button = uiNewButton("  Open File  ");
+	button = uiNewButton("Open File");
 	entry = uiNewEntry();
 	uiEntrySetReadOnly(entry, 1);
 	uiButtonOnClicked(button, onOpenFileClicked, entry);
@@ -342,7 +345,7 @@ static uiControl *makeDataChoosersPage(void)
 		1, 1, 1, 1,
 		1, uiAlignFill, 0, uiAlignFill);
 
-	button = uiNewButton("  Save File  ");
+	button = uiNewButton("Save File");
 	entry = uiNewEntry();
 	uiEntrySetReadOnly(entry, 1);
 	uiButtonOnClicked(button, onSaveFileClicked, entry);
@@ -353,7 +356,7 @@ static uiControl *makeDataChoosersPage(void)
 		1, 2, 1, 1,
 		1, uiAlignFill, 0, uiAlignFill);
 
-	button = uiNewButton("  Open File with Params  ");
+	button = uiNewButton("Open File (Advanced)");
 	entry = uiNewEntry();
 	uiEntrySetReadOnly(entry, 1);
 	uiButtonOnClicked(button, onOpenFileWithParamsClicked, entry);
@@ -364,7 +367,7 @@ static uiControl *makeDataChoosersPage(void)
 		1, 3, 1, 1,
 		1, uiAlignFill, 0, uiAlignFill);
 
-	button = uiNewButton("Open Folder with Params");
+	button = uiNewButton("Open Folder (Advanced)");
 	entry = uiNewEntry();
 	uiEntrySetReadOnly(entry, 1);
 	uiButtonOnClicked(button, onOpenFolderWithParamsClicked, entry);
@@ -375,7 +378,7 @@ static uiControl *makeDataChoosersPage(void)
 		1, 4, 1, 1,
 		1, uiAlignFill, 0, uiAlignFill);
 
-	button = uiNewButton("  Save File with Params  ");
+	button = uiNewButton("Save File (Advanced)");
 	entry = uiNewEntry();
 	uiEntrySetReadOnly(entry, 1);
 	uiButtonOnClicked(button, onSaveFileWithParamsClicked, entry);
