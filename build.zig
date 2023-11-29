@@ -48,7 +48,7 @@ pub fn build(b: *std.Build) void {
         lib.installHeader("ui_darwin.h", "ui_darwin.h");
         lib.addIncludePath(.{ .path = "darwin" });
         lib.linkFramework("Foundation");
-        lib.linkFramework("Appkit");
+        lib.linkFramework("AppKit");
         lib.addSystemIncludePath(.{ .path = "Cocoa" });
         lib.addCSourceFiles(.{
             .files = &.{
