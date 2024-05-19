@@ -170,7 +170,7 @@ pub fn build(b: *std.Build) void {
             .name = "test",
             .target = target,
             .optimize = optimize,
-            .win32_manifest = .{ .path = if (is_dynamic) "test/test.manifest" else "test/test.static.manifest" },
+            .win32_manifest = if (is_dynamic) b.path("test/test.manifest") else b.path("test/test.static.manifest"),
         });
         exe.addCSourceFiles(.{
             .files = &libui_test_sources,
@@ -198,7 +198,7 @@ pub fn build(b: *std.Build) void {
             .name = "qa",
             .target = target,
             .optimize = optimize,
-            .win32_manifest = .{ .path = if (is_dynamic) "test/qa/qa.manifest" else "test/qa/qa.static.manifest" },
+            .win32_manifest = if (is_dynamic) b.path("test/qa/qa.manifest") else b.path("test/qa/qa.static.manifest"),
         });
         exe.addCSourceFiles(.{
             .files = &libui_qa_sources,
