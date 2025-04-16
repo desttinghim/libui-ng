@@ -9,28 +9,27 @@ pub fn build(b: *std.Build) void {
     const library_type = b.option(LibraryType, "libtype", "Build libui as a dynamically linked library") orelse .static;
     const is_dynamic = library_type == .shared;
 
-    const lib = if (is_dynamic)
-        b.addSharedLibrary(.{
+    const ui_module = b.addModule("ui", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const lib =
+        b.addLibrary(.{
             .name = "ui",
-            .target = target,
-            .optimize = optimize,
-        })
-    else
-        b.addStaticLibrary(.{
-            .name = "ui",
-            .target = target,
-            .optimize = optimize,
+            .root_module = ui_module,
+            .linkage = if (is_dynamic) .dynamic else .static,
         });
     lib.linkLibC();
     lib.addIncludePath(b.path("common"));
     lib.installHeader(b.path("ui.h"), "ui.h");
-    lib.defineCMacro("libui_EXPORTS", "");
+    lib.root_module.addCMacro("libui_EXPORTS", "");
     lib.addCSourceFiles(.{
         .files = &libui_common_sources,
         .flags = &.{},
     });
 
-    if (target.result.isDarwin()) {
+    if (target.result.isDarwinLibC()) {
         // use darwin/*.m backend
         lib.installHeader(b.path("ui_darwin.h"), "ui_darwin.h");
         lib.addIncludePath(b.path("darwin"));
