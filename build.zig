@@ -96,18 +96,25 @@ pub fn build(b: *std.Build) void {
         "histogram",
         "timer",
         "window",
+        "cpp-multithread",
     };
     inline for (example_names) |name| {
-        const exe = b.addExecutable(.{
-            .name = name,
+        const is_cpp = comptime std.mem.startsWith(u8, name, "cpp");
+        const main = if (is_cpp) "/main.cpp" else "/main.c";
+        const module = b.addModule(name, .{
             .target = target,
             .optimize = optimize,
+            .link_libcpp = is_cpp,
         });
-        exe.addCSourceFile(.{
-            .file = b.path("examples/" ++ name ++ "/main.c"),
+        module.addCSourceFile(.{
+            .file = b.path("examples/" ++ name ++ main),
             .flags = &.{},
         });
-        exe.linkLibrary(lib);
+        module.linkLibrary(lib);
+        const exe = b.addExecutable(.{
+            .name = name,
+            .root_module = module,
+        });
         if (target.result.os.tag == .windows) {
             exe.addWin32ResourceFile(.{
                 .file = b.path("examples/resources.rc"),
@@ -124,53 +131,25 @@ pub fn build(b: *std.Build) void {
         run_step.dependOn(&run.step);
     }
 
-    // Build cpp-multithread example
-    // Needs own build logic due to cpp
-    {
-        const exe = b.addExecutable(.{
-            .name = "cpp-multithread",
-            .target = target,
-            .optimize = optimize,
-        });
-        exe.addCSourceFile(.{
-            .file = b.path("examples/cpp-multithread/main.cpp"),
-            .flags = &.{},
-        });
-        exe.linkLibrary(lib);
-        exe.linkLibCpp();
-
-        if (target.result.os.tag == .windows) {
-            exe.addWin32ResourceFile(.{
-                .file = b.path("examples/resources.rc"),
-                .flags = if (is_dynamic) &.{} else &.{ "/d", "_UI_STATIC" },
-            });
-        }
-
-        const install_step = b.addInstallArtifact(exe, .{});
-        const build_step = b.step("example-cpp-multithread", "Builds the cpp-multithread example");
-        build_step.dependOn(&install_step.step);
-        examples_step.dependOn(&install_step.step);
-
-        const run = b.addRunArtifact(exe);
-        const run_step = b.step("example-cpp-multithread-run", "Runs the cpp-multithread example");
-        run_step.dependOn(&run.step);
-    }
-
     // Build test step
     const build_all_tests_step = b.step("tests", "Build all test executables (test, unit, qa)");
     const test_dir: std.Build.InstallDir = .{ .custom = "test" };
     {
-        const exe = b.addExecutable(.{
-            .name = "test",
+        const module = b.addModule("test", .{
             .target = target,
             .optimize = optimize,
-            .win32_manifest = b.path(if (is_dynamic) "test/test.manifest" else "test/test.static.manifest"),
         });
-        exe.addCSourceFiles(.{
+        module.addCSourceFiles(.{
             .files = &libui_test_sources,
             .flags = &.{},
         });
-        exe.linkLibrary(lib);
+        module.linkLibrary(lib);
+
+        const exe = b.addExecutable(.{
+            .name = "test",
+            .root_module = module,
+            .win32_manifest = b.path(if (is_dynamic) "test/test.manifest" else "test/test.static.manifest"),
+        });
 
         const install = b.addInstallArtifact(exe, .{
             .dest_dir = .{ .override = test_dir },
@@ -188,18 +167,22 @@ pub fn build(b: *std.Build) void {
 
     // Build qa binary
     {
-        const exe = b.addExecutable(.{
-            .name = "qa",
+        const module = b.addModule("qa", .{
             .target = target,
             .optimize = optimize,
-            .win32_manifest = b.path(if (is_dynamic) "test/qa/qa.manifest" else "test/qa/qa.static.manifest"),
         });
-        exe.addCSourceFiles(.{
+        module.addCSourceFiles(.{
             .files = &libui_qa_sources,
             .flags = &.{},
         });
-        exe.addIncludePath(b.path("test/qa/"));
-        exe.linkLibrary(lib);
+        module.addIncludePath(b.path("test/qa/"));
+        module.linkLibrary(lib);
+
+        const exe = b.addExecutable(.{
+            .name = "qa",
+            .root_module = module,
+            .win32_manifest = b.path(if (is_dynamic) "test/qa/qa.manifest" else "test/qa/qa.static.manifest"),
+        });
 
         const install = b.addInstallArtifact(exe, .{
             .dest_dir = .{ .override = test_dir },
