@@ -1,0 +1,11 @@
+.{
+    .name = .libui_ng,
+    .version = "0.1.0",
+    .fingerprint = 0x8120c1930f367b9b,
+    .minimum_zig_version = "0.15.1",
+    .dependencies = .{},
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+    },
+}

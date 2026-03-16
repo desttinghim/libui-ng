@@ -5,47 +5,43 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const LibraryType = enum { static, shared };
-    const library_type = b.option(LibraryType, "libtype", "Build libui as a dynamically linked library") orelse .static;
-    const is_dynamic = library_type == .shared;
+    const link_mode = b.option(std.builtin.LinkMode, "dynamic", "Libui's linkage mode.") orelse .static;
+    const is_dynamic = link_mode == .dynamic;
 
-    const lib = if (is_dynamic)
-        b.addSharedLibrary(.{
-            .name = "ui",
-            .target = target,
-            .optimize = optimize,
-        })
-    else
-        b.addStaticLibrary(.{
-            .name = "ui",
-            .target = target,
-            .optimize = optimize,
-        });
-    lib.linkLibC();
-    lib.addIncludePath(.{ .path = "common" });
-    lib.installHeader(.{ .path = "ui.h" }, "ui.h");
-    lib.defineCMacro("libui_EXPORTS", "");
-    lib.addCSourceFiles(.{
-        .files = &libui_common_sources,
-        .flags = &.{},
+    const root_module = b.createModule(.{
+        .link_libc = true,
+        .target = target,
+        .optimize = optimize,
     });
 
-    if (target.result.isDarwin()) {
+    const lib = b.addLibrary(.{
+        .name = "ui",
+        .root_module = root_module,
+        .linkage = link_mode,
+    });
+    lib.addIncludePath(b.path("common"));
+    lib.installHeader(b.path("ui.h"), "ui.h");
+    lib.addCSourceFiles(.{
+        .files = &libui_common_sources,
+        .flags = &.{"-Dlibui_EXPORTS"},
+    });
+
+    if (target.result.isDarwinLibC()) {
         // use darwin/*.m backend
-        lib.installHeader(.{ .path = "ui_darwin.h" }, "ui_darwin.h");
-        lib.addIncludePath(.{ .path = "darwin" });
+        lib.installHeader(b.path("ui_darwin.h"), "ui_darwin.h");
+        lib.addIncludePath(b.path("darwin/"));
         lib.linkFramework("Foundation");
         lib.linkFramework("Appkit");
-        lib.addSystemIncludePath(.{ .path = "Cocoa" });
+        lib.addSystemIncludePath(b.path("Cocoa"));
         lib.addCSourceFiles(.{
             .files = &libui_darwin_sources,
             .flags = &.{},
         });
     } else if (target.result.os.tag == .windows) {
         // use windows/*.cpp backend
-        lib.installHeader(.{ .path = "ui_windows.h" }, "ui_windows.h");
+        lib.installHeader(b.path("ui_windows.h"), "ui_windows.h");
         lib.subsystem = .Windows;
-        lib.addIncludePath(.{ .path = "windows" });
+        lib.addIncludePath(b.path("windows"));
         lib.linkSystemLibrary("user32");
         lib.linkSystemLibrary("kernel32");
         lib.linkSystemLibrary("gdi32");
@@ -65,7 +61,7 @@ pub fn build(b: *std.Build) void {
         // Compile
         if (is_dynamic) {
             lib.addWin32ResourceFile(.{
-                .file = .{ .path = "windows/resources.rc" },
+                .file = b.path("windows/resources.rc"),
                 .flags = &.{},
             });
         }
@@ -76,9 +72,9 @@ pub fn build(b: *std.Build) void {
         });
     } else {
         // assume unix/*.c backend
-        lib.installHeader(.{ .path = "ui_unix.h" }, "ui_unix.h");
+        lib.installHeader(b.path("ui_unix.h"), "ui_unix.h");
         lib.linkSystemLibrary("gtk+-3.0");
-        lib.addIncludePath(.{ .path = "unix" });
+        lib.addIncludePath(b.path("unix"));
         lib.addCSourceFiles(.{
             .files = &libui_unix_sources,
             .flags = &.{},
@@ -99,19 +95,22 @@ pub fn build(b: *std.Build) void {
         "window",
     };
     inline for (example_names) |name| {
-        const exe = b.addExecutable(.{
-            .name = name,
+        const root = b.createModule(.{
             .target = target,
             .optimize = optimize,
         });
+        const exe = b.addExecutable(.{
+            .root_module = root,
+            .name = name,
+        });
         exe.addCSourceFile(.{
-            .file = .{ .path = "examples/" ++ name ++ "/main.c" },
+            .file = b.path("examples/" ++ name ++ "/main.c"),
             .flags = &.{},
         });
         exe.linkLibrary(lib);
         if (target.result.os.tag == .windows) {
             exe.addWin32ResourceFile(.{
-                .file = .{ .path = "examples/resources.rc" },
+                .file = b.path("examples/resources.rc"),
                 .flags = if (is_dynamic) &.{} else &.{ "/d", "_UI_STATIC" },
             });
         }
@@ -128,13 +127,16 @@ pub fn build(b: *std.Build) void {
     // Build cpp-multithread example
     // Needs own build logic due to cpp
     {
-        const exe = b.addExecutable(.{
-            .name = "cpp-multithread",
+        const root = b.createModule(.{
             .target = target,
             .optimize = optimize,
         });
+        const exe = b.addExecutable(.{
+            .root_module = root,
+            .name = "cpp-multithread",
+        });
         exe.addCSourceFile(.{
-            .file = .{ .path = "examples/cpp-multithread/main.cpp" },
+            .file = b.path("examples/cpp-multithread/main.cpp"),
             .flags = &.{},
         });
         exe.linkLibrary(lib);
@@ -142,7 +144,7 @@ pub fn build(b: *std.Build) void {
 
         if (target.result.os.tag == .windows) {
             exe.addWin32ResourceFile(.{
-                .file = .{ .path = "examples/resources.rc" },
+                .file = b.path("examples/resources.rc"),
                 .flags = if (is_dynamic) &.{} else &.{ "/d", "_UI_STATIC" },
             });
         }
@@ -161,11 +163,17 @@ pub fn build(b: *std.Build) void {
     const build_all_tests_step = b.step("tests", "Build all test executables (test, unit, qa)");
     const test_dir: std.Build.InstallDir = .{ .custom = "test" };
     {
-        const exe = b.addExecutable(.{
-            .name = "test",
+        const root = b.createModule(.{
             .target = target,
             .optimize = optimize,
-            .win32_manifest = .{ .path = if (is_dynamic) "test/test.manifest" else "test/test.static.manifest" },
+        });
+        const exe = b.addExecutable(.{
+            .root_module = root,
+            .name = "test",
+            .win32_manifest = b.path(if (is_dynamic)
+                "test/test.manifest"
+            else
+                "test/test.static.manifest"),
         });
         exe.addCSourceFiles(.{
             .files = &libui_test_sources,
@@ -189,17 +197,20 @@ pub fn build(b: *std.Build) void {
 
     // Build qa binary
     {
-        const exe = b.addExecutable(.{
-            .name = "qa",
+        const root = b.createModule(.{
             .target = target,
             .optimize = optimize,
-            .win32_manifest = .{ .path = if (is_dynamic) "test/qa/qa.manifest" else "test/qa/qa.static.manifest" },
+        });
+        const exe = b.addExecutable(.{
+            .root_module = root,
+            .name = "qa",
+            .win32_manifest = b.path(if (is_dynamic) "test/qa/qa.manifest" else "test/qa/qa.static.manifest"),
         });
         exe.addCSourceFiles(.{
             .files = &libui_qa_sources,
             .flags = &.{},
         });
-        exe.addIncludePath(.{ .path = "test/qa/" });
+        exe.addIncludePath(b.path("test/qa/"));
         exe.linkLibrary(lib);
 
         const install = b.addInstallArtifact(exe, .{
